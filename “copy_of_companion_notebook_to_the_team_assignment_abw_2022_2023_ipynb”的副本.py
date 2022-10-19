@@ -142,3 +142,101 @@ def question1():
 kk = question1()
 results = SolverFactory('glpk').solve(kk)
 print(kk.cost_minimise())
+
+#Define Model
+def question2():
+  model = ConcreteModel()
+  # Set of Possible Ingredient
+  model.ingredient = Set(initialize = available_ingredients.index)
+  model.nutrients = Set(initialize = nutrients)
+  # Indexed Variable of optimized amount of available Ingredient
+  model.x = Var(model.ingredient,domain = NonNegativeReals)
+  model.y = Var(model.ingredient,within = Boolean)
+  # Total Ingredient Constraint
+  model.total = Constraint(expr = sum(model.x[name] for name in model.ingredient) == 1)
+  # Boolean
+  model.binary = ConstraintList()
+  for name in model.ingredient:
+    model.binary.add(expr = model.x[name]<=model.y[name])
+  # Constraint of ingredient bounds
+  model.ingredient_bounds_lower = ConstraintList()
+  for name in model.ingredient:
+    if name in ingredient_bounds.keys():
+      model.ingredient_bounds_lower.add(expr = model.x[name] >= ingredient_bounds[name][0])
+  model.ingredient_bounds_upper = ConstraintList()
+  for name in model.ingredient:
+    if name in ingredient_bounds.keys() and ingredient_bounds[name][1] != None:
+      model.ingredient_bounds_upper.add(expr = model.x[name] <= ingredient_bounds[name][1])
+
+  # Constraint of nutrient bounds
+  def nutrient_bounds_upper_rule(model, nutrient):
+    return sum(model.x[name]*available_ingredients.loc[name, nutrient] for name in model.ingredient)<= nutrient_bounds[nutrient][1]
+  model.nutrient_bounds_upper = Constraint(model.nutrients, rule=nutrient_bounds_upper_rule)
+
+  def nutrient_bounds_lower_rule(model, nutrient):
+    return sum(model.x[name]*available_ingredients.loc[name, nutrient] for name in model.ingredient)>= nutrient_bounds[nutrient][0]
+  model.nutrient_bounds_lower = Constraint(model.nutrients, rule=nutrient_bounds_lower_rule)
+
+  # Combined Ingredient
+  model.combined_ingredient = ConstraintList()
+  for i in combined_ingredient_rules:
+    model.combined_ingredient.add(expr = sum(model.x[j] for j in i[1])<=i[0])
+
+  # Objective to reduce Cost
+  model.ingredient_minimise = Objective( expr = sum(model.y[name] for name in model.ingredient), sense = minimize)
+  return model 
+# Solving
+knack = question2()
+results = SolverFactory('glpk').solve(knack)
+print(knack.ingredient_minimise())
+knack.pprint()
+
+#Define Model
+def question3():
+  model = ConcreteModel()
+  # Set of Possible Ingredient
+  model.ingredient = Set(initialize = available_ingredients.index)
+  model.nutrients = Set(initialize = nutrients)
+  # Indexed Variable of optimized amount of available Ingredient
+  model.x = Var(model.ingredient,domain = NonNegativeReals)
+  model.y = Var(model.ingredient,within = Boolean)
+  # Total Ingredient Constraint
+  model.total = Constraint(expr = sum(model.x[name] for name in model.ingredient) == 1)
+  model.ytotal = Constraint(expr = sum(model.y[name] for name in model.ingredient) == 5)
+  # Boolean
+  model.binary = ConstraintList()
+  for name in model.ingredient:
+    model.binary.add(expr = model.x[name]<=model.y[name])
+  # Constraint of ingredient bounds
+  model.ingredient_bounds_lower = ConstraintList()
+  for name in model.ingredient:
+    if name in ingredient_bounds.keys():
+      model.ingredient_bounds_lower.add(expr = model.x[name] >= ingredient_bounds[name][0])
+  model.ingredient_bounds_upper = ConstraintList()
+  for name in model.ingredient:
+    if name in ingredient_bounds.keys() and ingredient_bounds[name][1] != None:
+      model.ingredient_bounds_upper.add(expr = model.x[name] <= ingredient_bounds[name][1])
+
+  # Constraint of nutrient bounds
+  def nutrient_bounds_upper_rule(model, nutrient):
+    return sum(model.x[name]*available_ingredients.loc[name, nutrient] for name in model.ingredient)<= nutrient_bounds[nutrient][1]
+  model.nutrient_bounds_upper = Constraint(model.nutrients, rule=nutrient_bounds_upper_rule)
+
+  def nutrient_bounds_lower_rule(model, nutrient):
+    return sum(model.x[name]*available_ingredients.loc[name, nutrient] for name in model.ingredient)>= nutrient_bounds[nutrient][0]
+  model.nutrient_bounds_lower = Constraint(model.nutrients, rule=nutrient_bounds_lower_rule)
+
+  # Combined Ingredient
+  model.combined_ingredient = ConstraintList()
+  for i in combined_ingredient_rules:
+    model.combined_ingredient.add(expr = sum(model.x[j] for j in i[1])<=i[0])
+
+  # Objective to reduce Cost
+  model.cost_minimise = Objective(expr = sum(available_ingredients.loc[name,'Price'] * model.x[name] \
+                    for name in model.ingredient), sense = minimize)
+  return model 
+# Solving
+knack = question3()
+results = SolverFactory('glpk').solve(knack)
+print(knack.cost_minimise())
+knack.pprint()
